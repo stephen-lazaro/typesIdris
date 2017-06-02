@@ -1,0 +1,3 @@
+package typable
+
+modules = arith, lambdaUntyped

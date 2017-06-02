@@ -1,5 +1,9 @@
+module Typable.Untyped.Arithmetic
+
+export
 data Meta = Empty
 
+public export
 data Term =
   Wrong Meta |
   VTrue Meta |
@@ -10,6 +14,7 @@ data Term =
   IsZero Meta Term |
   IfThenElse Meta Term Term Term
 
+export
 implementation Eq Term where
   (==) (Wrong m) (Wrong m') = True
   (==) (Wrong m) _ = False
@@ -36,32 +41,40 @@ implementation Eq Term where
   (==) _ (IfThenElse m t t' t'') = False
   (==) _ _ = False
 
+public export
 Predicate : Type -> Type
 Predicate a = a -> Bool
 
+public export
 total isNumeric : Predicate Term
 isNumeric (VZero a) = True
 isNumeric (Pred m t) = isNumeric t
 isNumeric (Succ m t) = isNumeric t
 isNumeric anythingElse = False
 
+public export
 total isBoolean : Predicate Term
 isBoolean (VTrue a) = True
 isBoolean (VFalse a) = True
 isBoolean anythingElse = False
 
+public export
 total and : Predicate a -> Predicate a -> Predicate a
 and f g = \x => (f x) && (g x)
 
+public export
 total or : Predicate a -> Predicate a -> Predicate a
 or f g = \x => (f x) || (g x)
 
+public export
 total isValue : Predicate Term
 isValue = or isNumeric isBoolean
 
+public export
 Endo : Type -> Type
 Endo a = a -> a
 
+export
 total evalOne : Endo Term
 evalOne (Wrong m) = Wrong m
 evalOne (IfThenElse m (VTrue m') t s) = t
@@ -86,6 +99,7 @@ evalOne anythingElse = Wrong Empty
 -- Not currently provably total, but
 -- I believe it in fact is.
 -- Need to refactor for totality.
+public export
 eval : Endo Term
 eval (Wrong m) = Wrong m
 eval (VZero m) = VZero m
