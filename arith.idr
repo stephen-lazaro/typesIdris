@@ -37,7 +37,7 @@ implementation Eq Term where
   (==) _ (IfThenElse m t t' t'') = False
   (==) _ _ = False
 
-public export
+export
 Predicate : Type -> Type
 Predicate a = a -> Bool
 
@@ -98,8 +98,13 @@ public export
 eval : Endo Term
 eval (Wrong m) = Wrong m
 eval (VZero m) = VZero m
-eval (Succ m t) = Succ m (eval t)
-eval (Pred m t) = Pred m (eval t)
+-- This might actually yield Succ (Wrong) sometimes!
+eval (Succ m t) = case (isNumeric t) of
+  True => Succ m (eval t)
+  False => Wrong m
+eval (Pred m t) = case (isNumeric t) of
+  True => Pred m (eval t)
+  False => Wrong m
 eval (VBool m t) = VBool m t
 eval t = eval t'
   where
