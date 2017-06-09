@@ -6,8 +6,7 @@ data Meta = Empty
 public export
 data Term =
   Wrong Meta |
-  VTrue Meta |
-  VFalse Meta |
+  VBool Meta Bool |
   VZero Meta |
   Pred Meta Term |
   Succ Meta Term |
@@ -19,12 +18,9 @@ implementation Eq Term where
   (==) (Wrong m) (Wrong m') = True
   (==) (Wrong m) _ = False
   (==) _ (Wrong m') = False
-  (==) (VTrue m) (VTrue m') = True
-  (==) _ (VTrue m) = False
-  (==) (VTrue m) _ = False
-  (==) (VFalse m) (VFalse m') = True
-  (==) (VFalse m) _ = False
-  (==) _ (VFalse m) = False
+  (==) (VBool m t) (VBool m' t') = t == t'
+  (==) _ (VBool m _) = False
+  (==) (VBool m _) _ = False
   (==) (Pred m t) (Pred m' t') = t == t'
   (==) (Pred m t) _ = False
   (==) _ (Pred m t) = False
@@ -54,8 +50,7 @@ isNumeric anythingElse = False
 
 public export
 total isBoolean : Predicate Term
-isBoolean (VTrue a) = True
-isBoolean (VFalse a) = True
+isBoolean (VBool a _) = True
 isBoolean anythingElse = False
 
 public export
@@ -77,8 +72,8 @@ Endo a = a -> a
 export
 total evalOne : Endo Term
 evalOne (Wrong m) = Wrong m
-evalOne (IfThenElse m (VTrue m') t s) = t
-evalOne (IfThenElse m (VFalse m') t s) = s
+evalOne (IfThenElse m (VBool m' True) t s) = t
+evalOne (IfThenElse m (VBool m' False) t s) = s
 evalOne (IfThenElse m (Wrong m') t s) = Wrong m'
 evalOne (IfThenElse m test t s) = case (test == (evalOne test)) of
   False => IfThenElse m (evalOne test) t s
@@ -89,9 +84,9 @@ evalOne (Pred m (Succ m' v)) = case (isNumeric v) of
   True => v
   False => Wrong m'
 evalOne (Pred m t) = Pred m (evalOne t)
-evalOne (IsZero m (VZero m')) = VTrue m'
+evalOne (IsZero m (VZero m')) = VBool m' True
 evalOne (IsZero m (Succ m' v)) = case (isNumeric v) of
-  True => VFalse m'
+  True => VBool m' False
   False => Wrong m'
 evalOne (IsZero m t) = IsZero m (evalOne t)
 evalOne anythingElse = Wrong Empty
@@ -103,8 +98,9 @@ public export
 eval : Endo Term
 eval (Wrong m) = Wrong m
 eval (VZero m) = VZero m
-eval (VTrue m) = VTrue m
-eval (VFalse m) = VFalse m
+eval (Succ m t) = Succ m (eval t)
+eval (Pred m t) = Pred m (eval t)
+eval (VBool m t) = VBool m t
 eval t = eval t'
   where
   total t' : Term
