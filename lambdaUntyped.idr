@@ -1,16 +1,20 @@
 module Typable.Untyped.Lambda
 
--- Use file name to import locally
 import arith
 
+Name: Type
+Name = String
+
 data LambdaTerm =
-  Primitive Var |
-  Lambda Var LambdaTerm |
+  Variable Name |
+  Lambda Name LambdaTerm |
   Application LambdaTerm LambdaTerm
 
+-- This is probably too pessimistic
+total isVariable : LambdaTerm -> Bool
+isVariable (Lambda x t) = False
+isVariable (Application t t') = False
+isVariable (Variable n) = True
 
--- Maybe?
-total isPrimitive : Pred LambdaTerm
-isVar Lambda x t = False
-isVar Applixation t1 t2 = False
-isVar _ = True
+-- Infomrationless Variable Binding
+data Binding = NameBind
