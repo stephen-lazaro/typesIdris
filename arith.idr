@@ -1,40 +1,26 @@
 module Typable.Untyped.Arithmetic
 
-export
-data Meta = Empty
-
 public export
 data Term =
-  Wrong Meta |
-  VBool Meta Bool |
-  VZero Meta |
-  Pred Meta Term |
-  Succ Meta Term |
-  IsZero Meta Term |
-  IfThenElse Meta Term Term Term
+  Wrong  |
+  VTrue |
+  VFalse |
+  VZero |
+  Pred Term |
+  Succ Term |
+  IsZero Term |
+  IfThenElse Term Term Term
 
-export
 implementation Eq Term where
-  (==) (Wrong m) (Wrong m') = True
-  (==) (Wrong m) _ = False
-  (==) _ (Wrong m') = False
-  (==) (VBool m t) (VBool m' t') = t == t'
-  (==) _ (VBool m _) = False
-  (==) (VBool m _) _ = False
-  (==) (Pred m t) (Pred m' t') = t == t'
-  (==) (Pred m t) _ = False
-  (==) _ (Pred m t) = False
-  (==) (Succ m t) (Succ m' t') = t == t'
-  (==) (Succ m t) _ = False
-  (==) _ (Succ m t) = False
-  (==) (IsZero m t) (IsZero m' t') = t == t'
-  (==) (IsZero m t) _ = False
-  (==) _ (IsZero m t) = False
+  (==) Wrong Wrong            = True
+  (==) VTrue VTrue            = True
+  (==) VFalse VFalse          = True
+  (==) (Pred t) (Pred t')     = t == t'
+  (==) (Succ t) (Succ t')     = t == t'
+  (==) (IsZero t) (IsZero t') = t == t'
   -- The next condition is too severe...
-  (==) (IfThenElse m t t' t'') (IfThenElse m' s s' s'') = result
-    where result = t == s && t' == s' && t'' == s''
-  (==) (IfThenElse m t t' t'') _ = False
-  (==) _ (IfThenElse m t t' t'') = False
+  (==) (IfThenElse t t' t'') (IfThenElse s s' s'') = result
+    where result = if t == s then t' == s' else t'' == s''
   (==) _ _ = False
 
 export
@@ -43,15 +29,16 @@ Predicate a = a -> Bool
 
 public export
 total isNumeric : Predicate Term
-isNumeric (VZero a) = True
-isNumeric (Pred m t) = isNumeric t
-isNumeric (Succ m t) = isNumeric t
-isNumeric anythingElse = False
+isNumeric VZero    = True
+isNumeric (Pred t) = isNumeric t
+isNumeric (Succ t) = isNumeric t
+isNumeric _        = False
 
 public export
 total isBoolean : Predicate Term
-isBoolean (VBool a _) = True
-isBoolean anythingElse = False
+isBoolean VTrue   = True
+isBoolean VFalse  = True
+isBoolean _       = False
 
 public export
 total and : Predicate a -> Predicate a -> Predicate a
@@ -71,42 +58,36 @@ Endo a = a -> a
 
 export
 total evalOne : Endo Term
-evalOne (Wrong m) = Wrong m
-evalOne (IfThenElse m (VBool m' True) t s) = t
-evalOne (IfThenElse m (VBool m' False) t s) = s
-evalOne (IfThenElse m (Wrong m') t s) = Wrong m'
-evalOne (IfThenElse m test t s) = case (test == (evalOne test)) of
-  False => IfThenElse m (evalOne test) t s
-  True => Wrong m
-evalOne (Succ m t) = Succ m (evalOne t)
-evalOne (Pred m VZero) = VZero
-evalOne (Pred m (Succ m' v)) = case (isNumeric v) of
+evalOne (Wrong) = Wrong
+evalOne (IfThenElse VTrue t s) = t
+evalOne (IfThenElse VFalse t s) = s
+evalOne (IfThenElse Wrong t s) = Wrong
+evalOne (IfThenElse test t s) = IfThenElse (evalOne test) t s
+evalOne (Succ t) = Succ (evalOne t)
+evalOne (Pred VZero) = Wrong
+evalOne (Pred (Succ v)) = case (isNumeric v) of
   True => v
-  False => Wrong m'
-evalOne (Pred m t) = Pred m (evalOne t)
-evalOne (IsZero m (VZero m')) = VBool m' True
-evalOne (IsZero m (Succ m' v)) = case (isNumeric v) of
-  True => VBool m' False
-  False => Wrong m'
-evalOne (IsZero m t) = IsZero m (evalOne t)
-evalOne anythingElse = Wrong Empty
+  False => Wrong
+evalOne (Pred t) = Pred (evalOne t)
+evalOne (IsZero VZero) = VTrue
+evalOne (IsZero (Succ v)) = case (isNumeric v) of
+  True => VFalse
+  False => Wrong
+evalOne (IsZero t) = IsZero (evalOne t)
+evalOne VZero = VZero
+evalOne _          = Wrong
 
--- Not currently provably total, but
--- I believe it in fact is.
--- Need to refactor for totality.
-public export
-eval : Endo Term
-eval (Wrong m) = Wrong m
-eval (VZero m) = VZero m
--- This might actually yield Succ (Wrong) sometimes!
-eval (Succ m t) = case (isNumeric t) of
-  True => Succ m (eval t)
-  False => Wrong m
-eval (Pred m t) = case (isNumeric t) of
-  True => Pred m (eval t)
-  False => Wrong m
-eval (VBool m t) = VBool m t
-eval t = eval t'
-  where
-  total t' : Term
-  t' = evalOne t
+partial eval : Endo Term
+eval Wrong = Wrong
+eval VZero = VZero
+eval (Succ t) = case (isNumeric t) of
+  True => Succ (eval t)
+  False => Wrong
+eval (Pred t) = case (isNumeric t) of
+  True => Pred (eval t)
+  False => Wrong
+eval VTrue  = VTrue
+eval VFalse = VFalse
+eval (IfThenElse VTrue t s) = eval t
+eval (IfThenElse VFalse t s) = eval s
+eval t = eval (evalOne t)
